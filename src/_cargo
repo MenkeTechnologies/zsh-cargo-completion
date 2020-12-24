@@ -15,7 +15,7 @@ __cargo_remote_packages(){
                 tmp_ary+=("${(q)crate}:$equals $version ${(q)desc}")
             done < <(cargo search --color=never --limit 1000 $PREFIX)
             if (( $#tmp_ary )); then
-                eval "$crate_ary=($tmp_ary)"
+                eval "$crate_ary=($tmp_ary)" &>/dev/null
                 _store_cache $crate_cache_file tmp_ary
             fi
         fi
