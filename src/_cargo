@@ -3,29 +3,26 @@
 autoload -U regexp-replace
 
 __cargo_remote_packages(){
-    __gem_search_mem() {
-
-    local gems_cache_file gems_ary
+    local crate_cache_file crate_ary
     local -a tmp_ary
-    gems_cache_file="gem_${PREFIX}_cache"
-    gems_ary="__gems_${PREFIX}"
-    ret=$(eval "printf \$+$gems_ary")
+    crate_cache_file="crate_${PREFIX}_cache"
+    crate_ary="__crate_${PREFIX}"
+    ret=$(eval "printf \$+$crate_ary")
 
     if (( ret == 0 )); then
-        if ! _retrieve_cache $gems_cache_file; then
-            while read tag desc; do
-                tmp_ary+=("${(q)tag}:${(q)desc}")
-            done < <(gem search -q $PREFIX)
-            eval "$gems_ary=($tmp_ary)"
-            _store_cache $gems_cache_file tmp_ary
+        if ! _retrieve_cache $crate_cache_file; then
+            while read crate desc; do
+                tmp_ary+=("${(q)crate}:$equals $version ${(q)desc}")
+            done < <(cargo search  --limit 1000 $PREFIX)
+            eval "$crate_ary=($tmp_ary)"
+            _store_cache $crate_cache_file tmp_ary
         fi
-        _describe -t remote-gem 'remote gems' tmp_ary
+        _describe -t remote-crate 'remote crate' tmp_ary
     else
-        _describe -t remote-gem 'remote gems' $gems_ary
+        _describe -t remote-crate 'remote crate' $crate_ary
     fi
+}
 
-}
-}
 _cargo() {
     local curcontext="$curcontext" ret=1
     local -a command_scope_spec common parallel features msgfmt triple target registry
@@ -91,6 +88,7 @@ _cargo() {
             case ${words[1]} in
                 add)
                     __cargo_remote_packages
+                    ;;
                 bench)
                     _arguments -s -A "^--" $common $parallel $features $msgfmt $triple $target $manifest \
                         "${command_scope_spec[@]}" \
