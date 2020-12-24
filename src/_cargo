@@ -7,15 +7,17 @@ __cargo_remote_packages(){
     local -a tmp_ary
     crate_cache_file="crate_${PREFIX}_cache"
     crate_ary="__crate_${PREFIX}"
-    ret=$(eval "printf \$+$crate_ary")
+    ret=$(eval "printf \$+$crate_ary" &>/dev/null)
 
     if (( ret == 0 )); then
         if ! _retrieve_cache $crate_cache_file; then
             while read crate desc; do
                 tmp_ary+=("${(q)crate}:$equals $version ${(q)desc}")
-            done < <(cargo search  --limit 1000 $PREFIX)
-            eval "$crate_ary=($tmp_ary)"
-            _store_cache $crate_cache_file tmp_ary
+            done < <(cargo search --color=never --limit 1000 $PREFIX)
+            if (( $#tmp_ary )); then
+                eval "$crate_ary=($tmp_ary)"
+                _store_cache $crate_cache_file tmp_ary
+            fi
         fi
         _describe -t remote-crate 'remote crate' tmp_ary
     else

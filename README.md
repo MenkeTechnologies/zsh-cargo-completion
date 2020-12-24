@@ -1,5 +1,8 @@
 # zsh-cargo-completion
 
+
+![cargo add rand <tab>](cargoadd.png)
+
 This plugin has all functionality of OMZ cargo completion but it also allows `cargo add <tab>` to complete remote crates from output of `cargo search`.
 
 ## Install for Zinit
