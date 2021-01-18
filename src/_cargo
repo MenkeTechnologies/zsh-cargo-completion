@@ -193,7 +193,7 @@ _cargo() {
                         '--tag=[tag to use when installing from git]:tag' \
                         '--vers=[version to install from crates.io]:version' \
                         '--list[list all installed packages and their versions]' \
-                        '*: :_guard "^-*" "crate"'
+                        '*: :__cargo_remote_packages'
                         ;;
 
                 locate-project)
