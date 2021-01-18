@@ -13,7 +13,7 @@ __cargo_remote_packages(){
         if ! _retrieve_cache $crate_cache_file; then
             while read crate desc; do
                 case $crate in
-                    ... )
+                    ...* )
                         continue
                         ;;
                 esac
