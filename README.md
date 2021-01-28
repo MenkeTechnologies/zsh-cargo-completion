@@ -5,6 +5,23 @@
 
 This plugin has all functionality of OMZ cargo completion but it also allows `cargo add <tab>` to complete remote crates from output of `cargo search`.
 
+It also adds several cargo aliases.
+
+```sh
+alias cr='cargo run'
+alias cl='cargo clean'
+alias ccy='cargo clippy'
+alias cb='cargo build --release'
+alias ct='cargo test'
+alias ca='cargo add'
+alias ci='cargo install'
+alias cfi='cargo fix'
+alias cf='cargo fmt'
+alias cfe='cargo fetch'
+alias cp='cargo package'
+alias cs='cargo search'
+```
+
 ## Install for Zinit
 > `~/.zshrc`
 ```sh
