@@ -8,7 +8,7 @@ alias ci='cargo install'
 alias cfi='cargo fix'
 alias cfm='cargo fmt'
 alias cfe='cargo fetch'
-alias cp='cargo package'
+alias cpa='cargo package'
 alias cs='cargo search'
 
 
