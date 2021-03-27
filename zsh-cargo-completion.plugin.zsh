@@ -5,11 +5,14 @@ alias cb='cargo build --release'
 alias ct='cargo test'
 alias cad='cargo add'
 alias ci='cargo install'
+alias ciu='cargo install-update -a'
 alias cfi='cargo fix'
 alias cfm='cargo fmt'
 alias cfe='cargo fetch'
 alias cpa='cargo package'
+alias cpl='cargo publish'
 alias cs='cargo search'
+alias cfa='cargo fmt; cargo fix --allow-dirty --allow-staged'
 
 
 0="${${0:#$ZSH_ARGZERO}:-${(%):-%N}}"
