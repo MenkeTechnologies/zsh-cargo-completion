@@ -3,11 +3,12 @@
 
 ![cargo add rand <tab>](cargoadd.png)
 
-This plugin has all functionality of OMZ cargo completion but it also allows `cargo add <tab>` to complete remote crates from output of `cargo search`.
+This plugin has all functionality of OMZ cargo completion but it also allows `cargo add/install <tab>` to complete remote crates from output of `cargo search`.
 
 It also adds several cargo aliases.
 
 ```sh
+alias co=cargo
 alias cr='cargo run'
 alias cl='cargo clean'
 alias ccy='cargo clippy'

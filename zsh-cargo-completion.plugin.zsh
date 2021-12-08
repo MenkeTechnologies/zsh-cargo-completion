@@ -1,3 +1,4 @@
+alias co=cargo
 alias cr='cargo run'
 alias ccl='cargo clean'
 alias ccy='cargo clippy'
