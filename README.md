@@ -21,6 +21,7 @@ alias cf='cargo fmt'
 alias cfe='cargo fetch'
 alias cpa='cargo package'
 alias cs='cargo search'
+alias cfa='cargo fmt; cargo fix --allow-dirty --allow-staged'
 ```
 
 ## Install for Zinit
