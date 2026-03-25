@@ -5,6 +5,10 @@ autoload -U regexp-replace
 __cargo_remote_packages(){
     local crate_cache_file crate_ary
     local -a tmp_ary
+
+    # return early if we were given something that looks like an optional argument
+    [[ "$PREFIX" == -* ]] && return 1
+
     crate_cache_file="crate_${PREFIX}_cache"
     crate_ary="__crate_${PREFIX}"
     ret=$(eval "printf \$+$crate_ary" &>/dev/null)
