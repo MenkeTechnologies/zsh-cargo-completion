@@ -1,4 +1,5 @@
 <p align="center">
+  <a href="https://github.com/MenkeTechnologies/zsh-cargo-completion/actions/workflows/ci.yml"><img src="https://github.com/MenkeTechnologies/zsh-cargo-completion/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
   <img src="https://img.shields.io/badge/%E2%9A%99-CARGO-ff2a6d?style=for-the-badge&labelColor=05d9e8" alt="cargo badge"/>
   <img src="https://img.shields.io/badge/ZSH-PLUGIN-05d9e8?style=for-the-badge&labelColor=0a0a2a" alt="zsh badge"/>
   <img src="https://img.shields.io/badge/LICENSE-MIT-d300c5?style=for-the-badge&labelColor=0a0a2a" alt="license badge"/>
