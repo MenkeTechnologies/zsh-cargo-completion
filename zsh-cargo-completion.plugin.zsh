@@ -13,7 +13,7 @@ alias cfe='cargo fetch'
 alias cpa='cargo package'
 alias cpl='cargo publish'
 alias cs='cargo search'
-alias cfa='cargo fmt; cargo fix --allow-dirty --allow-staged'
+alias cfa='cargo fix --allow-dirty --allow-staged;cargo clippy --all-targets --fix -- -D warnings; cargo fmt'
 
 
 0="${${0:#$ZSH_ARGZERO}:-${(%):-%N}}"

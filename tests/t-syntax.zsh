@@ -541,7 +541,8 @@
     source "$pluginDir/zsh-cargo-completion.plugin.zsh"
     run alias cfa
     assert $state equals 0
-    assert "$output" contains "cargo fmt; cargo fix"
+    assert "$output" contains "cargo fmt"
+    assert "$output" contains "cargo fix"
 }
 
 @test 'run subcommand has release example and bin flags' {
