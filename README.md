@@ -45,7 +45,7 @@ alias ct='cargo test'           # run tests
 alias ccy='cargo clippy'        # lint
 alias cfm='cargo fmt'           # format
 alias cfi='cargo fix'           # auto-fix
-alias cfa='cargo fmt; cargo fix --allow-dirty --allow-staged'
+alias cfa='cargo fix --allow-dirty --allow-staged;cargo clippy --all-targets --fix -- -D warnings; cargo fmt'
 
 # ── DEPENDENCIES ──────────────────────────────────────
 alias cad='cargo add'           # add crate
