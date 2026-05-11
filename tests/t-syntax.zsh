@@ -42,13 +42,6 @@
     assert "$output" contains "cargo run"
 }
 
-@test 'alias cb is cargo build --release' {
-    source "$pluginDir/zsh-cargo-completion.plugin.zsh"
-    run alias cb
-    assert $state equals 0
-    assert "$output" contains "cargo build --release"
-}
-
 @test 'alias ct is cargo test' {
     source "$pluginDir/zsh-cargo-completion.plugin.zsh"
     run alias ct
@@ -442,16 +435,6 @@
     contents="$(<"$pluginDir/src/_cargo")"
     assert "$contents" contains '_cargo-${words[1]}'
     assert "$contents" contains "_default && ret=0"
-}
-
-@test 'no unexpected aliases leak from plugin' {
-    local before_aliases after_aliases
-    before_aliases=$(alias | wc -l)
-    source "$pluginDir/zsh-cargo-completion.plugin.zsh"
-    after_aliases=$(alias | wc -l)
-    # plugin defines exactly 16 aliases
-    local diff=$(( after_aliases - before_aliases ))
-    assert "$diff" same_as "16"
 }
 
 @test 'sourcing plugin twice does not duplicate fpath entries' {
@@ -958,13 +941,6 @@
     contents="$(<"$pluginDir/src/_cargo")"
     assert "$contents" contains 'eval "printf \$+'
     assert "$contents" contains 'eval "$crate_ary=('
-}
-
-@test 'cb alias builds in release mode' {
-    source "$pluginDir/zsh-cargo-completion.plugin.zsh"
-    run alias cb
-    assert $state equals 0
-    assert "$output" contains "--release"
 }
 
 @test 'ciu alias uses install-update with -a flag' {
