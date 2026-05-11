@@ -38,7 +38,8 @@
 # ── CORE ──────────────────────────────────────────────
 alias co=cargo                  # base command
 alias cr='cargo run'            # run project
-alias cb='cargo build --release'# release build
+alias cb='cargo build'          # build
+alias cbr='cargo build --release'
 
 # ── CODE QUALITY ──────────────────────────────────────
 alias ct='cargo test'           # run tests
