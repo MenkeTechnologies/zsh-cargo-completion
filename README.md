@@ -1,30 +1,36 @@
-<p align="center">
-  <a href="https://github.com/MenkeTechnologies/zsh-cargo-completion/actions/workflows/ci.yml"><img src="https://github.com/MenkeTechnologies/zsh-cargo-completion/actions/workflows/ci.yml/badge.svg" alt="CI"/></a>
-  <img src="https://img.shields.io/badge/%E2%9A%99-CARGO-ff2a6d?style=for-the-badge&labelColor=05d9e8" alt="cargo badge"/>
-  <img src="https://img.shields.io/badge/ZSH-PLUGIN-05d9e8?style=for-the-badge&labelColor=0a0a2a" alt="zsh badge"/>
-  <img src="https://img.shields.io/badge/LICENSE-MIT-d300c5?style=for-the-badge&labelColor=0a0a2a" alt="license badge"/>
-</p>
+```
+ ███████╗███████╗██╗  ██╗
+ ╚══███╔╝██╔════╝██║  ██║
+   ███╔╝ ███████╗███████║
+  ███╔╝  ╚════██║██╔══██║
+ ███████╗███████║██║  ██║
+ ╚══════╝╚══════╝╚═╝  ╚═╝
+       [ c a r g o ]
+```
 
-<h1 align="center">
-  <code>>>> zsh-cargo-completion <<<</code>
-</h1>
+[![CI](https://github.com/MenkeTechnologies/zsh-cargo-completion/actions/workflows/ci.yml/badge.svg)](https://github.com/MenkeTechnologies/zsh-cargo-completion/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![zsh](https://img.shields.io/badge/zsh-plugin-cyan.svg)](https://github.com/MenkeTechnologies/zpwr)
 
-<p align="center">
-  <b>// TURBOCHARGE YOUR CARGO WORKFLOW WITH TAB COMPLETIONS + ALIASES //</b>
-</p>
+### `[CARGO COMPLETION FOR ZSH // REMOTE CRATE SEARCH VIA TAB]`
 
----
+> *"`cargo add <TAB>` and `cargo install <TAB>` query the crates.io index live."*
 
-<pre align="center">
- ╔══════════════════════════════════════════════════════════════╗
- ║  ALL OMZ CARGO COMPLETIONS + REMOTE CRATE SEARCH VIA TAB   ║
- ║  cargo add &lt;TAB&gt; / cargo install &lt;TAB&gt; = LIVE CRATE LOOKUP ║
- ╚══════════════════════════════════════════════════════════════╝
-</pre>
+**zsh-cargo-completion** ships every OMZ cargo completion plus a live `cargo search`-backed completer for `cargo add` and `cargo install`. Type `cargo add <TAB>` and the remote crate index is queried in real time.
+
+### [`strykelang`](https://github.com/MenkeTechnologies/strykelang) &middot; [`zshrs`](https://github.com/MenkeTechnologies/zshrs) · [`MenkeTechnologiesMeta`](https://github.com/MenkeTechnologies/MenkeTechnologiesMeta) · [`zsh-more-completions`](https://github.com/MenkeTechnologies/zsh-more-completions) · [`zsh-better-npm-completion`](https://github.com/MenkeTechnologies/zsh-better-npm-completion) · [`zsh-gem-completion`](https://github.com/MenkeTechnologies/zsh-gem-completion) · [`zpwr`](https://github.com/MenkeTechnologies/zpwr)
 
 ---
 
-### `> DEMO_`
+## Table of Contents
+
+- [\[0x00\] `> DEMO_`](#0x00-demo_)
+- [\[0x01\] `> ALIASES_`](#0x01-aliases_)
+- [\[0x02\] `> INSTALL_`](#0x02-install_)
+
+---
+
+## [0x00] `> DEMO_`
 
 ![cargo add rand <tab>](cargoadd.png)
 
@@ -32,7 +38,7 @@
 
 ---
 
-### `> ALIASES_`
+## [0x01] `> ALIASES_`
 
 ```zsh
 # ── CORE ──────────────────────────────────────────────
@@ -63,7 +69,7 @@ alias ccl='cargo clean'         # clean target/
 
 ---
 
-### `> INSTALL_`
+## [0x02] `> INSTALL_`
 
 <details>
 <summary><b>// ZINIT (RECOMMENDED) //</b></summary>
@@ -101,6 +107,3 @@ Source `zsh-cargo-completion.plugin.zsh` from your `~/.zshrc` or any startup scr
 
 ---
 
-<p align="center">
-  <sub><code>MIT License</code> | <code>MenkeTechnologies</code></sub>
-</p>
