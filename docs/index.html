@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="zsh-cargo-completion — every OMZ cargo completion plus a live cargo search-backed completer for cargo add and cargo install. Type `cargo add &lt;TAB&gt;` and the remote crates.io index is queried in real time.">
+  <title>zsh-cargo-completion — Documentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&amp;family=Share+Tech+Mono&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="hud-static.css">
+  <link rel="stylesheet" href="tutorial.css">
+  <style>
+    .tutorial-main { max-width: 68rem; }
+    .docs-build-line { margin: 0.35rem 0 0; font-family: 'Share Tech Mono', ui-monospace, monospace; font-size: 11px; color: var(--text-dim); letter-spacing: 0.03em; max-width: 42rem; opacity: 0.75; }
+    .hub-scheme-strip { border-bottom: 1px dashed var(--border); background: color-mix(in srgb, var(--bg-secondary) 85%, transparent); padding: 0.55rem 1.5rem 0.65rem; position: relative; }
+    .hub-scheme-strip-inner { max-width: 68rem; margin: 0 auto; display: flex; align-items: center; gap: 0.85rem; }
+    .hub-scheme-strip .hud-scheme-label { flex: 0 0 auto; font-family: 'Orbitron', sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); text-align: left; }
+    .hub-scheme-strip .scheme-grid { flex: 1 1 auto; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+    @media (max-width: 720px) { .hub-scheme-strip-inner { flex-direction: column; align-items: stretch; } .hub-scheme-strip .scheme-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .example-tbl { width: 100%; border-collapse: collapse; margin: 0.6rem 0; font-size: 12.5px; }
+    .example-tbl td { padding: 6px 10px; border: 1px solid var(--border); vertical-align: top; color: var(--text-dim); }
+    .example-tbl td:first-child { width: 40%; color: var(--cyan); font-family: 'Share Tech Mono', monospace; }
+    .example-tbl td code { color: var(--accent-light); background: var(--bg); padding: 1px 5px; font-size: 12px; }
+    .sibling-list { columns: 2; column-gap: 1.5rem; padding-left: 1.1rem; }
+    .sibling-list li { break-inside: avoid; margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <div class="app tutorial-app" id="docsApp">
+    <div class="crt-scanline" id="crtH" aria-hidden="true"></div>
+    <div class="crt-scanline-v" id="crtV" aria-hidden="true"></div>
+
+    <header class="tutorial-header">
+      <div class="tutorial-header-inner">
+        <div>
+          <h1 class="tutorial-brand">// ZSH-CARGO-COMPLETION &mdash; LIVE CRATES.IO COMPLETION FOR cargo add / cargo install</h1>
+          <nav class="tutorial-crumbs" aria-label="Breadcrumb">
+            <span class="current">Docs</span>
+            <span class="sep">/</span>
+            <a href="https://github.com/MenkeTechnologies/zsh-cargo-completion" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <span class="sep">/</span>
+            <a href="https://github.com/MenkeTechnologies/zpwr" target="_blank" rel="noopener noreferrer">zpwr</a>
+            <span class="sep">/</span>
+            <a href="https://github.com/MenkeTechnologies/MenkeTechnologiesMeta" target="_blank" rel="noopener noreferrer">Meta</a>
+          </nav>
+          <p class="docs-build-line">zsh plugin · ships every OMZ cargo completion · live <code>cargo search</code>-backed completer for remote crate names</p>
+        </div>
+        <div class="tutorial-toolbar">
+          <button type="button" class="btn btn-secondary" id="btnTheme" title="Toggle light/dark">Theme</button>
+          <button type="button" class="btn btn-secondary active" id="btnCrt" title="CRT scanline overlay">CRT</button>
+          <button type="button" class="btn btn-secondary active" id="btnNeon" title="Neon border pulse">Neon</button>
+          <a class="btn btn-secondary" href="https://github.com/MenkeTechnologies/zsh-cargo-completion" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a class="btn btn-secondary" href="https://github.com/MenkeTechnologies/zsh-cargo-completion/issues" target="_blank" rel="noopener noreferrer">Issues</a>
+        </div>
+      </div>
+    </header>
+
+    <div class="hub-scheme-strip">
+      <div class="hub-scheme-strip-inner">
+        <span class="hud-scheme-label">// Color scheme</span>
+        <div class="scheme-grid" id="hudSchemeGrid"></div>
+      </div>
+    </div>
+
+    <main class="tutorial-main">
+      <h2 class="tutorial-title"><span class="step-hash">&gt;_</span>ZSH-CARGO-COMPLETION</h2>
+      <p class="tutorial-subtitle"><strong>Cargo completion with a live remote index.</strong> Every OMZ cargo completion plus a live <code>cargo search</code>-backed completer for <code>cargo add</code> and <code>cargo install</code>. Type <code>cargo add &lt;TAB&gt;</code> and the remote crates.io index is queried in real time.</p>
+
+      <section class="tutorial-section">
+        <h2>Install</h2>
+<pre># Zinit (recommended)
+zinit ice lucid nocompile
+zinit load MenkeTechnologies/zsh-cargo-completion
+
+# Oh My Zsh
+git clone https://github.com/MenkeTechnologies/zsh-cargo-completion \
+    "$HOME/.oh-my-zsh/custom/plugins/zsh-cargo-completion"
+# then: plugins+=(zsh-cargo-completion)
+
+# Manual
+git clone https://github.com/MenkeTechnologies/zsh-cargo-completion
+source zsh-cargo-completion/zsh-cargo-completion.plugin.zsh</pre>
+      </section>
+
+      <section class="tutorial-section">
+        <h2>Aliases</h2>
+        <table class="example-tbl">
+          <tbody>
+            <tr><td>base</td><td><code>co</code> = <code>cargo</code></td></tr>
+            <tr><td>run / build / release</td><td><code>cr</code>, <code>cb</code>, <code>cbr</code></td></tr>
+            <tr><td>test / clippy / fmt / fix</td><td><code>ct</code>, <code>ccy</code>, <code>cfm</code>, <code>cfi</code></td></tr>
+            <tr><td>add / install / install-update / search / fetch</td><td><code>cad</code>, <code>ci</code>, <code>ciu</code>, <code>cs</code>, <code>cfe</code></td></tr>
+            <tr><td>package / publish / clean</td><td><code>cpa</code>, <code>cpl</code>, <code>ccl</code></td></tr>
+          </tbody>
+        </table>
+        <p>The full alias table is in the <a href="https://github.com/MenkeTechnologies/zsh-cargo-completion#0x01--aliases_">README "ALIASES" section</a>.</p>
+      </section>
+
+      <section class="tutorial-section">
+        <h2>Examples</h2>
+<pre>cargo add &lt;TAB&gt;          # live crate name completion from crates.io
+cargo install &lt;TAB&gt;      # same remote completer
+cargo build              # all OMZ cargo subcommand completion still works
+cargo test --features &lt;TAB&gt;
+cad ser                  # add serde via the cad alias</pre>
+      </section>
+
+      <section class="tutorial-section">
+        <h2>Sibling plugins</h2>
+        <p>Part of the MenkeTechnologies zsh plugin family &mdash; the <a href="https://github.com/MenkeTechnologies/MenkeTechnologiesMeta">MenkeTechnologiesMeta</a> umbrella:</p>
+        <ul class="sibling-list">
+          <li><a href="https://github.com/MenkeTechnologies/zsh-better-npm-completion">zsh-better-npm-completion</a> &mdash; cache-aware <code>npm install</code> completion</li>
+          <li><a href="https://github.com/MenkeTechnologies/zsh-cpan-completion">zsh-cpan-completion</a> &mdash; live MetaCPAN <code>cpan</code> / <code>cpanm</code> completion</li>
+          <li><a href="https://github.com/MenkeTechnologies/zsh-dotnet-completion">zsh-dotnet-completion</a> &mdash; dotnet CLI completion</li>
+          <li><a href="https://github.com/MenkeTechnologies/zsh-expand">zsh-expand</a> &mdash; spacebar expansion (11,683 tests)</li>
+          <li><a href="https://github.com/MenkeTechnologies/zsh-gem-completion">zsh-gem-completion</a> &mdash; ruby <code>gem install</code> remote completion</li>
+          <li><a href="https://github.com/MenkeTechnologies/zsh-git-acp">zsh-git-acp</a> &mdash; 159 git aliases + add/commit/push keybindings</li>
+          <li><a href="https://github.com/MenkeTechnologies/zsh-git-repo-cache">zsh-git-repo-cache</a> &mdash; index every git repo on disk</li>
+          <li><a href="https://github.com/MenkeTechnologies/zsh-learn">zsh-learn</a> &mdash; MySQL-backed learning collection / quiz</li>
+          <li><a href="https://github.com/MenkeTechnologies/zsh-more-completions">zsh-more-completions</a> &mdash; 27,790-file mega completion corpus</li>
+          <li><a href="https://github.com/MenkeTechnologies/zsh-nginx">zsh-nginx</a> &mdash; nginx commands + service-wrapper aliases</li>
+          <li><a href="https://github.com/MenkeTechnologies/zsh-pip-description-completion">zsh-pip-description-completion</a> &mdash; pip remote completion with descriptions</li>
+          <li><a href="https://github.com/MenkeTechnologies/zsh-sed-sub">zsh-sed-sub</a> &mdash; in-place sed substitution on the command line</li>
+          <li><a href="https://github.com/MenkeTechnologies/zsh-sudo">zsh-sudo</a> &mdash; ESC ESC to prepend sudo</li>
+          <li><a href="https://github.com/MenkeTechnologies/zsh-xcode-completions">zsh-xcode-completions</a> &mdash; xcodebuild / xcrun / swift completion</li>
+        </ul>
+      </section>
+
+    </main>
+  </div>
+  <script src="hud-theme.js"></script>
+</body>
+</html>
