@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="zsh-cargo-completion — Engineering report. Cargo subcommand + flag completion with a live cargo search-backed completer for cargo add / cargo install / cargo build -p / cargo run -p / cargo test -p. 450-line _cargo + 23-line plugin entry, 17 aliases, 172 zunit @test blocks across 6 t-*.zsh files, 33 subcommand arms, 8 helper completion functions, 2-tier _retrieve_cache / _store_cache layer over the remote index.">
+  <title>zsh-cargo-completion &mdash; Engineering Report</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&amp;family=Share+Tech+Mono&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="hud-static.css">
+  <link rel="stylesheet" href="tutorial.css">
+  <style>
+    .tutorial-main { max-width: 72rem; }
+    .stat-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(13rem,1fr));gap:0.7rem;margin:1rem 0; }
+    .stat-card { border:1px solid var(--border);border-top:3px solid var(--cyan);background:var(--bg-card);padding:0.85rem 1rem;border-radius:2px;text-align:center; }
+    .stat-card .stat-val { font-family:'Orbitron',sans-serif;font-size:26px;font-weight:900;color:var(--cyan);line-height:1.1;text-shadow:0 0 18px var(--cyan-glow); }
+    .stat-card .stat-val.accent { color:var(--accent);text-shadow:0 0 18px var(--accent-glow); }
+    .stat-card .stat-val.green  { color:var(--green);text-shadow:0 0 18px rgba(57,255,20,.3); }
+    .stat-card .stat-label { font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--text-muted);margin-top:0.45rem; }
+    .file-table { width:100%;border-collapse:collapse;margin:0.6rem 0;font-size:12px; }
+    .file-table th { background:var(--bg-secondary);color:var(--cyan);font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;text-align:left;padding:7px 10px;border:1px solid var(--border); }
+    .file-table td { padding:6px 10px;border:1px solid var(--border);color:var(--text-dim);vertical-align:middle; }
+    .file-table tr:hover td { background:var(--bg-hover); }
+    .file-table td:first-child { font-family:'Share Tech Mono',monospace;color:var(--accent-light);font-weight:600;white-space:nowrap; }
+    .file-table .num { text-align:right;font-family:'Share Tech Mono',monospace; }
+    .file-table .total-row td { background:var(--bg-secondary);font-weight:700;color:var(--text);border-top:2px solid var(--cyan); }
+    .file-table code { font-size:11px;color:var(--accent-light);background:var(--bg-primary);padding:1px 4px;border-radius:2px; }
+    .feature-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(20rem,1fr));gap:0.65rem;margin:0.8rem 0; }
+    .feature-card { border:1px solid var(--border);border-left:3px solid var(--cyan);background:var(--bg-card);padding:0.7rem 1rem;border-radius:2px; }
+    .feature-card h4 { font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--cyan);margin:0 0 0.3rem; }
+    .feature-card p { margin:0;font-size:11px;color:var(--text-dim);line-height:1.55; }
+    .feature-card code { font-size:10.5px;color:var(--accent-light);background:var(--bg-primary);padding:1px 4px;border-radius:2px; }
+    .section-rule { border:none;border-top:1px dashed var(--border);margin:1.8rem 0; }
+  </style>
+</head>
+<body>
+  <div class="app tutorial-app" id="reportApp">
+    <div class="crt-scanline" id="crtH" aria-hidden="true"></div>
+    <div class="crt-scanline-v" id="crtV" aria-hidden="true"></div>
+
+    <header class="tutorial-header">
+      <div class="tutorial-header-inner">
+        <div>
+          <h1 class="tutorial-brand">// ZSH-CARGO-COMPLETION &mdash; ENGINEERING REPORT</h1>
+          <nav class="tutorial-crumbs" aria-label="Breadcrumb">
+            <span class="current">Engineering Report</span>
+            <span class="sep">/</span>
+            <a href="index.html">Docs</a>
+            <span class="sep">/</span>
+            <a href="https://github.com/MenkeTechnologies/zsh-cargo-completion" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <span class="sep">/</span>
+            <a href="https://github.com/MenkeTechnologies/zpwr" target="_blank" rel="noopener noreferrer">zpwr</a>
+            <span class="sep">/</span>
+            <a href="https://github.com/MenkeTechnologies/MenkeTechnologiesMeta" target="_blank" rel="noopener noreferrer">Meta</a>
+          </nav>
+          <p style="margin:0.35rem 0 0;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text-dim);letter-spacing:0.03em;opacity:0.75;">
+            <code>#compdef cargo</code> &middot; live <code>cargo search</code>-backed remote crate completion &middot; <code>_retrieve_cache</code> / <code>_store_cache</code> 2-tier memoization &middot; full OMZ cargo subcommand surface
+          </p>
+        </div>
+        <div class="tutorial-toolbar">
+          <button type="button" class="btn btn-secondary" id="btnTheme" title="Toggle light/dark">Theme</button>
+          <button type="button" class="btn btn-secondary active" id="btnCrt" title="CRT scanline overlay">CRT</button>
+          <button type="button" class="btn btn-secondary active" id="btnNeon" title="Neon border pulse">Neon</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="tutorial-main">
+
+      <h2 class="tutorial-title"><span class="step-hash">&gt;_</span>EXECUTIVE SUMMARY</h2>
+      <p class="tutorial-subtitle">
+        <strong>zsh-cargo-completion</strong> ships every cargo subcommand + flag completion that Oh My Zsh's <code>cargo</code> plugin carries, plus a live <code>cargo search</code>-backed completer for the remote-crate-name positional argument of <code>cargo add</code> and <code>cargo install</code>. Type <code>cargo add ran&lt;TAB&gt;</code> and the completer fires <code>cargo search --color=never --limit 1000 -q ran</code>, parses the response, caches it via zsh's built-in <code>_retrieve_cache</code> / <code>_store_cache</code> memoization layer (so the next <kbd>TAB</kbd> against the same prefix is local), and feeds the resulting <code>crate:description</code> pairs to <code>_describe</code>. Total surface: <strong>450 lines</strong> in <code>src/_cargo</code>, plus a <strong>23-line</strong> plugin entry that adds <code>${0:h}/src</code> to <code>fpath</code> and exposes <strong>17 cargo aliases</strong>. Pinned by <strong>172 <code>@test</code> blocks</strong> across <strong>6 zunit files</strong>.
+      </p>
+
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-val">473</div><div class="stat-label">Zsh Lines</div></div>
+        <div class="stat-card"><div class="stat-val">450</div><div class="stat-label">_cargo Lines</div></div>
+        <div class="stat-card"><div class="stat-val green">172</div><div class="stat-label">@test Blocks (zunit)</div></div>
+        <div class="stat-card"><div class="stat-val">6</div><div class="stat-label">Test Files</div></div>
+        <div class="stat-card"><div class="stat-val accent">33</div><div class="stat-label">Subcommand Arms</div></div>
+        <div class="stat-card"><div class="stat-val">17</div><div class="stat-label">Cargo Aliases</div></div>
+        <div class="stat-card"><div class="stat-val">8</div><div class="stat-label">Helper Fns</div></div>
+        <div class="stat-card"><div class="stat-val">31</div><div class="stat-label">_arguments Blocks</div></div>
+      </div>
+
+      <hr class="section-rule">
+
+      <h2 class="tutorial-title"><span class="step-hash">~</span>ARCHITECTURE</h2>
+      <p class="tutorial-subtitle">Two-file shape. The plugin file is alias-only + an <code>fpath</code> nudge; the compdef file is the entire completion engine.</p>
+
+      <table class="file-table">
+        <thead>
+          <tr><th>File</th><th class="num">Lines</th><th>Role</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>zsh-cargo-completion.plugin.zsh</code></td>
+            <td class="num">23</td>
+            <td>Plugin entry. Declares 17 cargo aliases (<code>co</code>, <code>cr</code>, <code>cb</code>, <code>cbr</code>, <code>ct</code>, <code>ccy</code>, <code>cfm</code>, <code>cfi</code>, <code>cfa</code>, <code>cad</code>, <code>ci</code>, <code>ciu</code>, <code>cs</code>, <code>cfe</code>, <code>cpa</code>, <code>cpl</code>, <code>ccl</code>). Runs the Zsh Plugin Standard <code>0=</code> header to resolve its own path, then prepends <code>${0:h}/src</code> to <code>fpath</code> so <code>compinit</code> picks up <code>src/_cargo</code>.</td>
+          </tr>
+          <tr>
+            <td><code>src/_cargo</code></td>
+            <td class="num">450</td>
+            <td>The completion. Starts with <code>#compdef cargo</code>, autoloads <code>regexp-replace</code>, defines <code>__cargo_remote_packages</code> (the live crates.io completer), <code>_cargo</code> (top-level dispatcher), and 8 helper-completion fns (<code>_cargo_unstable_flags</code>, <code>_cargo_installed_crates</code>, <code>_cargo_cmds</code>, <code>_cargo_package_names</code>, <code>_cargo_names_from_array</code>, <code>_cargo_example_names</code>, <code>_cargo_test_names</code>, <code>_cargo_benchmark_names</code>). The big case statement under <code>_cargo</code> dispatches to 33 per-subcommand arms (<code>add</code>, <code>bench</code>, <code>build</code>, <code>check</code>, <code>clean</code>, <code>clippy</code>, <code>config</code>, <code>doc</code>, <code>fetch</code>, <code>fix</code>, <code>fmt</code>, <code>init</code>, <code>install</code>, <code>locate-project</code>, <code>login</code>, <code>logout</code>, <code>metadata</code>, <code>new</code>, <code>owner</code>, <code>package</code>, <code>pkgid</code>, <code>publish</code>, <code>run</code>, <code>rustc</code>, <code>rustdoc</code>, <code>search</code>, <code>test</code>, <code>tree</code>, <code>uninstall</code>, <code>update</code>, <code>vendor</code>, <code>version</code>, <code>yank</code>) — each wrapping an <code>_arguments</code> block with the subcommand's flag table.</td>
+          </tr>
+          <tr class="total-row">
+            <td>Total source</td>
+            <td class="num">473</td>
+            <td>2 files &middot; pure zsh &middot; compsys-native</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <hr class="section-rule">
+
+      <h2 class="tutorial-title"><span class="step-hash">#</span>TEST COVERAGE</h2>
+      <p class="tutorial-subtitle"><strong>172</strong> <code>@test</code> blocks across <strong>6</strong> zunit files under <code>tests/t-*.zsh</code>. Plus 18 portable shell gates under <code>tests/*.sh</code> (final-newline, has-h1, no-deprecated-tags, no-inline-handlers, target-blank-rel-noopener, shell-shebang, workflow-no-tabs, ...) that run alongside the zunit suite.</p>
+
+      <table class="file-table">
+        <thead>
+          <tr><th>File</th><th class="num">Tests</th><th>Pins</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>t-aliases.zsh</code></td>
+            <td class="num">21</td>
+            <td>Each of the 17 aliases resolves to the documented cargo invocation; <code>fpath</code> augmentation uses <code>${0:h}/src</code> (plugin-manager portable); <code>_cargo</code> leads with <code>#compdef cargo</code>.</td>
+          </tr>
+          <tr>
+            <td><code>t-syntax.zsh</code></td>
+            <td class="num">133</td>
+            <td>Every <code>*.zsh</code> in the repo root and every file under <code>src/</code> parses cleanly under <code>zsh -n</code>. Largest test file by count &mdash; covers parse safety per-file, not just per-repo.</td>
+          </tr>
+          <tr>
+            <td><code>t-contract.zsh</code></td>
+            <td class="num">3</td>
+            <td>Plugin-contract pins: entrypoint stem matches plugin dir basename, entrypoint parses under <code>zsh -n</code>, every <code>_*</code> completion file leads with <code>#compdef</code>.</td>
+          </tr>
+          <tr>
+            <td><code>t-contract2.zsh</code></td>
+            <td class="num">5</td>
+            <td>OMZ-style install pins: <code>plugins+=(zsh-cargo-completion)</code> path works; <code>fpath</code> is prepended, not replaced.</td>
+          </tr>
+          <tr>
+            <td><code>t-contract3.zsh</code></td>
+            <td class="num">5</td>
+            <td>Zinit-style install pins: <code>zinit load</code> path resolves; no compile-on-load hooks; <code>nocompile</code> ice honored.</td>
+          </tr>
+          <tr>
+            <td><code>t-contract4.zsh</code></td>
+            <td class="num">5</td>
+            <td>Manual <code>source</code> path: standalone source from any CWD honors <code>${0:h}</code> resolution; no global state leak before sourcing.</td>
+          </tr>
+          <tr class="total-row">
+            <td>Total</td>
+            <td class="num">172</td>
+            <td>6 zunit files &middot; alias-surface + syntax + install-path-contract</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <hr class="section-rule">
+
+      <h2 class="tutorial-title"><span class="step-hash">/</span>INTEGRATION</h2>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <h4>Zinit (recommended)</h4>
+          <p><code>zinit ice lucid nocompile</code><br><code>zinit load MenkeTechnologies/zsh-cargo-completion</code><br><code>nocompile</code> keeps the source path stable so <code>${0:h}/src</code> resolves to the real on-disk <code>src/</code> directory (not the compiled <code>.zwc</code>).</p>
+        </div>
+        <div class="feature-card">
+          <h4>Oh My Zsh</h4>
+          <p>Clone into <code>$ZSH_CUSTOM/plugins/zsh-cargo-completion</code>, then add to <code>plugins=(...)</code>. OMZ sources <code>zsh-cargo-completion.plugin.zsh</code>, the file declares its aliases, augments <code>fpath</code>, and OMZ's own <code>compinit</code> picks up <code>_cargo</code> on the next prompt.</p>
+        </div>
+        <div class="feature-card">
+          <h4>Cache layer (zsh built-in)</h4>
+          <p><code>__cargo_remote_packages</code> uses <code>_retrieve_cache</code> + <code>_store_cache</code> keyed by <code>crate_${PREFIX}_cache</code>. First <kbd>TAB</kbd> against a prefix fires <code>cargo search</code>; subsequent <kbd>TAB</kbd>s on the same prefix hit the cache. Cache TTL is governed by zsh's <code>zstyle ':completion::complete:*' use-cache yes</code> &mdash; user-tunable.</p>
+        </div>
+        <div class="feature-card">
+          <h4>OMZ plugin compatibility</h4>
+          <p>The 17 aliases overlap intentionally with the OMZ <code>rust</code> / <code>cargo</code> plugins (<code>co</code>, <code>cr</code>, <code>cb</code>, <code>ct</code>, ...) &mdash; load order is "OMZ first, then this plugin" so the local aliases win, but the underlying cargo CLI shape is identical.</p>
+        </div>
+        <div class="feature-card">
+          <h4>No daemon, no fork hot path</h4>
+          <p>The <em>only</em> external process invocation is <code>cargo search</code> &mdash; gated behind a prefix length check (skipped if <code>$PREFIX</code> starts with <code>-</code>) and gated again behind the cache. Every other completion path (subcommand list via <code>cargo --list</code>, installed crates via <code>cargo install --list</code>, local package names) is also cached.</p>
+        </div>
+        <div class="feature-card">
+          <h4>Public-callable helpers</h4>
+          <p>The 8 helper fns are namespaced (<code>_cargo_*</code>) &mdash; user-defined completions and sibling plugins can reuse them. <code>_cargo_installed_crates</code> in particular is the answer to "complete the binary name for <code>cargo uninstall</code> / <code>cargo install --force</code>" &mdash; no zsh-cargo-completion-specific knowledge required to call it.</p>
+        </div>
+      </div>
+
+      <hr class="section-rule">
+
+      <h2 class="tutorial-title"><span class="step-hash">!</span>DESIGN DECISIONS</h2>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <h4>Live <code>cargo search</code>, not a vendored crate index</h4>
+          <p>A vendored crate index would go stale on day one. The completer shells out to <code>cargo search</code> &mdash; the same code path the user would run manually &mdash; so the result reflects the current published crates.io state. The cost is one network call per uncached prefix; the gain is a completion that never lies.</p>
+        </div>
+        <div class="feature-card">
+          <h4>2-tier memoization: parameter + on-disk cache</h4>
+          <p>The first cache tier is a zsh parameter (<code>__crate_${PREFIX}</code>) probed via <code>$+param</code>. The second is the standard <code>_retrieve_cache</code> / <code>_store_cache</code> on-disk cache. The parameter tier wins within a single shell session (no <code>~/.zcompcache</code> stat); the on-disk tier wins across sessions.</p>
+        </div>
+        <div class="feature-card">
+          <h4>Skip remote lookup on flag prefix</h4>
+          <p><code>[[ "$PREFIX" == -* ]] &amp;&amp; return 1</code> at the top of <code>__cargo_remote_packages</code> &mdash; when the user is in the middle of typing a flag (e.g. <code>cargo add --quiet</code>), the completer doesn't fire <code>cargo search</code>. Two seconds saved per accidental <kbd>TAB</kbd> on flags.</p>
+        </div>
+        <div class="feature-card">
+          <h4>Subcommand list via <code>cargo --list</code>, not a hardcoded table</h4>
+          <p><code>_cargo_cmds</code> parses <code>cargo --list</code> output (after dropping the header and de-indenting), then feeds it to <code>_describe</code>. New custom subcommands (anything on <code>$PATH</code> matching <code>cargo-*</code>) appear in completion automatically &mdash; no plugin update required.</p>
+        </div>
+        <div class="feature-card">
+          <h4>33 per-subcommand <code>_arguments</code> arms, not a single mega-arm</h4>
+          <p>cargo's flag surface is split per subcommand. The completion mirrors that shape &mdash; <code>cargo build</code> flags don't leak into <code>cargo install</code> completions and vice versa. Cost: 450 lines of <code>_cargo</code> file. Gain: each <kbd>TAB</kbd> shows only the flags that the subcommand under cursor actually accepts.</p>
+        </div>
+        <div class="feature-card">
+          <h4>Aliases live in the plugin file, not in the README</h4>
+          <p>The 17 aliases ship as live <code>alias</code> commands in <code>zsh-cargo-completion.plugin.zsh</code> &mdash; the README is documentation, the plugin file is the source of truth. <code>t-aliases.zsh</code> pins both surfaces stay in sync.</p>
+        </div>
+      </div>
+
+      <hr class="section-rule">
+
+      <h2 class="tutorial-title"><span class="step-hash">@</span>FOOTPRINT</h2>
+      <ul style="font-size:12px;color:var(--text-dim);line-height:1.7;">
+        <li><strong>Disk</strong>: <code>~/.oh-my-zsh/custom/plugins/zsh-cargo-completion</code> (or zinit cache). Two source files, plus shipped tests.</li>
+        <li><strong>Memory</strong>: zero permanent allocations &mdash; the per-prefix <code>__crate_${PREFIX}</code> caches live for the shell session and clear on exit.</li>
+        <li><strong>Compinit cost</strong>: one extra <code>fpath</code> entry, one extra <code>_cargo</code> file &mdash; folded into the existing <code>compinit</code> pass, no new compile step.</li>
+        <li><strong>Network</strong>: <em>one</em> <code>cargo search</code> per uncached prefix on <code>cargo add</code> / <code>cargo install</code> &mdash; bounded to crates.io; opt out by typing without <kbd>TAB</kbd>.</li>
+        <li><strong>External commands</strong>: <code>cargo</code> only (for <code>--list</code>, <code>search</code>, <code>install --list</code>). No <code>curl</code>, no <code>jq</code>, no <code>git</code>.</li>
+      </ul>
+
+    </main>
+
+    <footer style="text-align:center;padding:2rem;font-size:10px;color:var(--text-muted);font-family:'Orbitron',sans-serif;letter-spacing:2px;">
+      ZSH-CARGO-COMPLETION ENGINEERING REPORT &middot; 473 ZSH LINES &middot; 450 _cargo LINES &middot; 172 ZUNIT TESTS &middot; 33 SUBCOMMAND ARMS &middot; 17 ALIASES &middot; LIVE CRATES.IO COMPLETION &middot; MENKETECHNOLOGIES
+    </footer>
+  </div>
+
+  <script>
+    const html = document.documentElement;
+    const btnTheme = document.getElementById('btnTheme');
+    const btnCrt = document.getElementById('btnCrt');
+    const btnNeon = document.getElementById('btnNeon');
+    const crtH = document.getElementById('crtH');
+    const crtV = document.getElementById('crtV');
+    btnTheme?.addEventListener('click', () => {
+      html.setAttribute('data-theme', html.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+    });
+    btnCrt?.addEventListener('click', () => {
+      btnCrt.classList.toggle('active');
+      const on = btnCrt.classList.contains('active');
+      if (crtH) crtH.style.display = on ? '' : 'none';
+      if (crtV) crtV.style.display = on ? '' : 'none';
+    });
+    btnNeon?.addEventListener('click', () => {
+      btnNeon.classList.toggle('active');
+      document.querySelector('.app')?.classList.toggle('neon-off');
+    });
+  </script>
+</body>
+</html>
