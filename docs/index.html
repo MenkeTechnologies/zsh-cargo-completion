@@ -101,12 +101,53 @@ source zsh-cargo-completion/zsh-cargo-completion.plugin.zsh</pre>
       </section>
 
       <section class="tutorial-section">
+        <h2>What gets completed</h2>
+        <p>Three layers, all via zsh's native completion system (<code>compsys</code>) &mdash; no daemon, no background process:</p>
+        <table class="example-tbl">
+          <tbody>
+            <tr><td>remote crate names</td><td><code>cargo add ran&lt;TAB&gt;</code> / <code>cargo install &lt;TAB&gt;</code> &mdash; queries crates.io live via <code>cargo search</code></td></tr>
+            <tr><td>subcommands</td><td><code>cargo &lt;TAB&gt;</code> &mdash; parsed from <code>cargo --list</code>, so custom <code>cargo-*</code> subcommands appear automatically</td></tr>
+            <tr><td>per-subcommand flags</td><td>32 subcommands have their own flag tables (<code>cargo build --&lt;TAB&gt;</code>, <code>cargo test --&lt;TAB&gt;</code>, ...)</td></tr>
+            <tr><td>installed binaries</td><td><code>cargo uninstall &lt;TAB&gt;</code> &mdash; from <code>cargo install --list</code></td></tr>
+            <tr><td>example targets</td><td><code>cargo run --example &lt;TAB&gt;</code> &mdash; from <code>examples/*.rs</code></td></tr>
+            <tr><td>nightly flags</td><td><code>cargo -Z &lt;TAB&gt;</code> &mdash; from <code>cargo -Z help</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="tutorial-section">
         <h2>Examples</h2>
 <pre>cargo add &lt;TAB&gt;          # live crate name completion from crates.io
+cargo add ran&lt;TAB&gt;       # narrows to crates whose name matches the prefix
 cargo install &lt;TAB&gt;      # same remote completer
-cargo build              # all OMZ cargo subcommand completion still works
+cargo &lt;TAB&gt;              # subcommand list from `cargo --list`
+cargo build --&lt;TAB&gt;      # build-specific flags only
 cargo test --features &lt;TAB&gt;
-cad ser                  # add serde via the cad alias</pre>
+cargo uninstall &lt;TAB&gt;    # installed binary crates
+cargo -Z &lt;TAB&gt;           # nightly unstable flags
+cad ser                  # add serde via the cad alias
+cs serde                 # `cargo search serde` via the cs alias</pre>
+      </section>
+
+      <section class="tutorial-section">
+        <h2>Configuration</h2>
+        <p>The remote completer caches per prefix in two tiers: an in-session zsh parameter (<code>__crate_&lt;prefix&gt;</code>) and the standard on-disk completion cache backing <code>_retrieve_cache</code> / <code>_store_cache</code>. The on-disk tier obeys zsh's normal completion-cache styles &mdash; set these in <code>~/.zshrc</code> <em>before</em> <code>compinit</code>:</p>
+<pre># enable the on-disk completion cache (off by default in zsh)
+zstyle ':completion:*' use-cache yes
+zstyle ':completion:*' cache-path "$HOME/.zcompcache"</pre>
+        <p>Load order matters: source this plugin so that <code>${0:h}/src</code> is on <code>fpath</code> before <code>compinit</code> runs. Under Oh My Zsh and Zinit this is handled automatically by the plugin file's <code>fpath</code> prepend. The flag guard (<code>cargo add --&lt;TAB&gt;</code>) skips the network call entirely &mdash; the live lookup only fires when the word under the cursor is a crate-name prefix.</p>
+      </section>
+
+      <section class="tutorial-section">
+        <h2>Troubleshooting</h2>
+        <table class="example-tbl">
+          <tbody>
+            <tr><td>no remote completion</td><td>Confirm <code>cargo search serde</code> works on its own; the completer shells out to exactly that command. A failing/proxied network means no candidates.</td></tr>
+            <tr><td>completion not loading</td><td>Ensure <code>compinit</code> runs after the plugin is sourced. Under Zinit, use <code>nocompile</code> so <code>${0:h}/src</code> resolves to the on-disk <code>src/</code> rather than a compiled <code>.zwc</code>.</td></tr>
+            <tr><td>stale crate list</td><td>The per-prefix cache persists across sessions when <code>use-cache</code> is on. Remove <code>$HOME/.zcompcache/crate_*_cache</code> to force a fresh <code>cargo search</code>.</td></tr>
+            <tr><td>alias conflicts</td><td>Several aliases (<code>co</code>, <code>cr</code>, <code>cb</code>, <code>ct</code>, ...) overlap with the OMZ <code>rust</code>/<code>cargo</code> plugins. Load this plugin last so its aliases win.</td></tr>
+          </tbody>
+        </table>
       </section>
 
       <section class="tutorial-section">
