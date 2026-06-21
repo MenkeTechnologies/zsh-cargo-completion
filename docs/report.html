@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark light">
-  <meta name="description" content="zsh-cargo-completion — Engineering report. Cargo subcommand + flag completion with a live cargo search-backed completer for cargo add / cargo install / cargo build -p / cargo run -p / cargo test -p. 450-line _cargo + 23-line plugin entry, 17 aliases, 172 zunit @test blocks across 6 t-*.zsh files, 33 subcommand arms, 8 helper completion functions, 2-tier _retrieve_cache / _store_cache layer over the remote index.">
+  <meta name="description" content="zsh-cargo-completion — Engineering report. Cargo subcommand + flag completion with a live cargo search-backed completer for the cargo add / cargo install remote-crate positional. 450-line _cargo + 23-line plugin entry, 17 aliases, 172 zunit @test blocks across 6 t-*.zsh files, 32 subcommand arms, 8 helper completion functions, 2-tier __crate_PREFIX parameter + _retrieve_cache / _store_cache on-disk layer over the remote index.">
   <title>zsh-cargo-completion &mdash; Engineering Report</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -71,7 +71,7 @@
 
       <h2 class="tutorial-title"><span class="step-hash">&gt;_</span>EXECUTIVE SUMMARY</h2>
       <p class="tutorial-subtitle">
-        <strong>zsh-cargo-completion</strong> ships every cargo subcommand + flag completion that Oh My Zsh's <code>cargo</code> plugin carries, plus a live <code>cargo search</code>-backed completer for the remote-crate-name positional argument of <code>cargo add</code> and <code>cargo install</code>. Type <code>cargo add ran&lt;TAB&gt;</code> and the completer fires <code>cargo search --color=never --limit 1000 -q ran</code>, parses the response, caches it via zsh's built-in <code>_retrieve_cache</code> / <code>_store_cache</code> memoization layer (so the next <kbd>TAB</kbd> against the same prefix is local), and feeds the resulting <code>crate:description</code> pairs to <code>_describe</code>. Total surface: <strong>450 lines</strong> in <code>src/_cargo</code>, plus a <strong>23-line</strong> plugin entry that adds <code>${0:h}/src</code> to <code>fpath</code> and exposes <strong>17 cargo aliases</strong>. Pinned by <strong>172 <code>@test</code> blocks</strong> across <strong>6 zunit files</strong>.
+        <strong>zsh-cargo-completion</strong> ships every cargo subcommand + flag completion that Oh My Zsh's <code>cargo</code> plugin carries, plus a live <code>cargo search</code>-backed completer for the remote-crate-name positional argument of <code>cargo add</code> and <code>cargo install</code>. Type <code>cargo add ran&lt;TAB&gt;</code> and the completer fires <code>cargo search --color=never --limit 1000 -q ran</code>, parses the response, caches it via zsh's built-in <code>_retrieve_cache</code> / <code>_store_cache</code> memoization layer (so the next <kbd>TAB</kbd> against the same prefix is local), and feeds the resulting <code>crate:description</code> pairs to <code>_describe</code>. Total surface: <strong>450 lines</strong> in <code>src/_cargo</code>, plus a <strong>23-line</strong> plugin entry that adds <code>${0:h}/src</code> to <code>fpath</code> and exposes <strong>17 cargo aliases</strong> &mdash; <strong>473 zsh lines</strong> total. The completion engine is one top-level dispatcher (<code>_cargo</code>), one live-index completer (<code>__cargo_remote_packages</code>), and <strong>8 helper completion functions</strong>, with a <code>case ${words[1]}</code> statement that fans out into <strong>32 per-subcommand <code>_arguments</code> arms</strong>. Pinned by <strong>172 <code>@test</code> blocks</strong> across <strong>6 zunit files</strong>, plus <strong>21 portable <code>tests/*.sh</code> gates</strong>.
       </p>
 
       <div class="stat-grid">
@@ -79,7 +79,7 @@
         <div class="stat-card"><div class="stat-val">450</div><div class="stat-label">_cargo Lines</div></div>
         <div class="stat-card"><div class="stat-val green">172</div><div class="stat-label">@test Blocks (zunit)</div></div>
         <div class="stat-card"><div class="stat-val">6</div><div class="stat-label">Test Files</div></div>
-        <div class="stat-card"><div class="stat-val accent">33</div><div class="stat-label">Subcommand Arms</div></div>
+        <div class="stat-card"><div class="stat-val accent">32</div><div class="stat-label">Subcommand Arms</div></div>
         <div class="stat-card"><div class="stat-val">17</div><div class="stat-label">Cargo Aliases</div></div>
         <div class="stat-card"><div class="stat-val">8</div><div class="stat-label">Helper Fns</div></div>
         <div class="stat-card"><div class="stat-val">31</div><div class="stat-label">_arguments Blocks</div></div>
@@ -103,7 +103,7 @@
           <tr>
             <td><code>src/_cargo</code></td>
             <td class="num">450</td>
-            <td>The completion. Starts with <code>#compdef cargo</code>, autoloads <code>regexp-replace</code>, defines <code>__cargo_remote_packages</code> (the live crates.io completer), <code>_cargo</code> (top-level dispatcher), and 8 helper-completion fns (<code>_cargo_unstable_flags</code>, <code>_cargo_installed_crates</code>, <code>_cargo_cmds</code>, <code>_cargo_package_names</code>, <code>_cargo_names_from_array</code>, <code>_cargo_example_names</code>, <code>_cargo_test_names</code>, <code>_cargo_benchmark_names</code>). The big case statement under <code>_cargo</code> dispatches to 33 per-subcommand arms (<code>add</code>, <code>bench</code>, <code>build</code>, <code>check</code>, <code>clean</code>, <code>clippy</code>, <code>config</code>, <code>doc</code>, <code>fetch</code>, <code>fix</code>, <code>fmt</code>, <code>init</code>, <code>install</code>, <code>locate-project</code>, <code>login</code>, <code>logout</code>, <code>metadata</code>, <code>new</code>, <code>owner</code>, <code>package</code>, <code>pkgid</code>, <code>publish</code>, <code>run</code>, <code>rustc</code>, <code>rustdoc</code>, <code>search</code>, <code>test</code>, <code>tree</code>, <code>uninstall</code>, <code>update</code>, <code>vendor</code>, <code>version</code>, <code>yank</code>) — each wrapping an <code>_arguments</code> block with the subcommand's flag table.</td>
+            <td>The completion. Starts with <code>#compdef cargo</code>, autoloads <code>regexp-replace</code>, defines <code>__cargo_remote_packages</code> (the live crates.io completer), <code>_cargo</code> (top-level dispatcher), and 8 helper-completion fns (<code>_cargo_unstable_flags</code>, <code>_cargo_installed_crates</code>, <code>_cargo_cmds</code>, <code>_cargo_package_names</code>, <code>_cargo_names_from_array</code>, <code>_cargo_example_names</code>, <code>_cargo_test_names</code>, <code>_cargo_benchmark_names</code>). The <code>case ${words[1]}</code> statement under <code>_cargo</code> dispatches to 32 per-subcommand arms (<code>add</code>, <code>bench</code>, <code>build</code>, <code>check</code>, <code>clean</code>, <code>doc</code>, <code>fetch</code>, <code>fix</code>, <code>generate-lockfile</code>, <code>git-checkout</code>, <code>help</code>, <code>init</code>, <code>install</code>, <code>locate-project</code>, <code>login</code>, <code>metadata</code>, <code>new</code>, <code>owner</code>, <code>package</code>, <code>pkgid</code>, <code>publish</code>, <code>read-manifest</code>, <code>run</code>, <code>rustc</code>, <code>rustdoc</code>, <code>search</code>, <code>test</code>, <code>uninstall</code>, <code>update</code>, <code>verify-project</code>, <code>version</code>, <code>yank</code>) — most wrapping an <code>_arguments</code> block with the subcommand's flag table, plus a wildcard <code>*)</code> fallthrough that probes for a user-defined <code>_cargo-&lt;sub&gt;</code> function before dropping to <code>_default</code>.</td>
           </tr>
           <tr class="total-row">
             <td>Total source</td>
@@ -116,7 +116,7 @@
       <hr class="section-rule">
 
       <h2 class="tutorial-title"><span class="step-hash">#</span>TEST COVERAGE</h2>
-      <p class="tutorial-subtitle"><strong>172</strong> <code>@test</code> blocks across <strong>6</strong> zunit files under <code>tests/t-*.zsh</code>. Plus 18 portable shell gates under <code>tests/*.sh</code> (final-newline, has-h1, no-deprecated-tags, no-inline-handlers, target-blank-rel-noopener, shell-shebang, workflow-no-tabs, ...) that run alongside the zunit suite.</p>
+      <p class="tutorial-subtitle"><strong>172</strong> <code>@test</code> blocks across <strong>6</strong> zunit files under <code>tests/t-*.zsh</code>. Plus 21 portable shell gates under <code>tests/*.sh</code> (final-newline, has-h1, has-body-tag, has-html-closing, no-deprecated-tags, no-placeholder-href, no-http-links, no-inline-handlers, target-blank-rel-noopener, man-page-synopsis-section, shell-shebang, shell-executable, workflow-no-tabs, readme-has-badges, ...) that run alongside the zunit suite across the <code>docs-gates</code>, <code>polish-gates</code>, <code>semantic-gates</code>, <code>newline-gates</code>, and <code>structure-gates</code> CI jobs.</p>
 
       <table class="file-table">
         <thead>
@@ -176,7 +176,7 @@
         </div>
         <div class="feature-card">
           <h4>Cache layer (zsh built-in)</h4>
-          <p><code>__cargo_remote_packages</code> uses <code>_retrieve_cache</code> + <code>_store_cache</code> keyed by <code>crate_${PREFIX}_cache</code>. First <kbd>TAB</kbd> against a prefix fires <code>cargo search</code>; subsequent <kbd>TAB</kbd>s on the same prefix hit the cache. Cache TTL is governed by zsh's <code>zstyle ':completion::complete:*' use-cache yes</code> &mdash; user-tunable.</p>
+          <p><code>__cargo_remote_packages</code> uses <code>_retrieve_cache</code> + <code>_store_cache</code> keyed by <code>crate_${PREFIX}_cache</code>. First <kbd>TAB</kbd> against a prefix fires <code>cargo search</code>; subsequent <kbd>TAB</kbd>s on the same prefix hit the cache. Whether the on-disk tier is consulted at all is governed by zsh's standard <code>zstyle ':completion:*' use-cache yes</code> / <code>cache-path</code> styles &mdash; user-tunable. The cache has no TTL; remove <code>$HOME/.zcompcache/crate_*_cache</code> to force a fresh query.</p>
         </div>
         <div class="feature-card">
           <h4>OMZ plugin compatibility</h4>
@@ -214,7 +214,7 @@
           <p><code>_cargo_cmds</code> parses <code>cargo --list</code> output (after dropping the header and de-indenting), then feeds it to <code>_describe</code>. New custom subcommands (anything on <code>$PATH</code> matching <code>cargo-*</code>) appear in completion automatically &mdash; no plugin update required.</p>
         </div>
         <div class="feature-card">
-          <h4>33 per-subcommand <code>_arguments</code> arms, not a single mega-arm</h4>
+          <h4>32 per-subcommand <code>_arguments</code> arms, not a single mega-arm</h4>
           <p>cargo's flag surface is split per subcommand. The completion mirrors that shape &mdash; <code>cargo build</code> flags don't leak into <code>cargo install</code> completions and vice versa. Cost: 450 lines of <code>_cargo</code> file. Gain: each <kbd>TAB</kbd> shows only the flags that the subcommand under cursor actually accepts.</p>
         </div>
         <div class="feature-card">
@@ -234,10 +234,114 @@
         <li><strong>External commands</strong>: <code>cargo</code> only (for <code>--list</code>, <code>search</code>, <code>install --list</code>). No <code>curl</code>, no <code>jq</code>, no <code>git</code>.</li>
       </ul>
 
+      <hr class="section-rule">
+
+      <h2 class="tutorial-title"><span class="step-hash">$</span>ALIAS REFERENCE</h2>
+      <p class="tutorial-subtitle">All 17 aliases are declared at the top of <code>zsh-cargo-completion.plugin.zsh</code>. Each is a literal <code>alias</code> command &mdash; the plugin file is the source of truth, mirrored by the README and pinned by <code>t-aliases.zsh</code>.</p>
+
+      <table class="file-table">
+        <thead>
+          <tr><th>Alias</th><th>Expansion</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>co</code></td><td><code>cargo</code></td><td>Base command shorthand.</td></tr>
+          <tr><td><code>cr</code></td><td><code>cargo run</code></td><td>Run the current project's default binary.</td></tr>
+          <tr><td><code>cb</code></td><td><code>cargo build</code></td><td>Debug build.</td></tr>
+          <tr><td><code>cbr</code></td><td><code>cargo build --release</code></td><td>Optimized release build.</td></tr>
+          <tr><td><code>ct</code></td><td><code>cargo test</code></td><td>Run the test suite.</td></tr>
+          <tr><td><code>ccy</code></td><td><code>cargo clippy</code></td><td>Lint with clippy.</td></tr>
+          <tr><td><code>cfm</code></td><td><code>cargo fmt</code></td><td>Format with rustfmt.</td></tr>
+          <tr><td><code>cfi</code></td><td><code>cargo fix</code></td><td>Apply compiler-suggested fixes.</td></tr>
+          <tr><td><code>cfa</code></td><td><code>cargo fix --allow-dirty --allow-staged; cargo clippy --all-targets --fix -- -D warnings; cargo fmt</code></td><td>One-shot fix + clippy-fix + fmt chain. The only multi-command alias.</td></tr>
+          <tr><td><code>cad</code></td><td><code>cargo add</code></td><td>Add a dependency &mdash; the live-completion entry point.</td></tr>
+          <tr><td><code>ci</code></td><td><code>cargo install</code></td><td>Install a binary crate &mdash; also live-completed.</td></tr>
+          <tr><td><code>ciu</code></td><td><code>cargo install-update -a</code></td><td>Update all installed binary crates (requires <code>cargo-update</code>).</td></tr>
+          <tr><td><code>cs</code></td><td><code>cargo search</code></td><td>Query crates.io from the shell &mdash; the same command the completer shells out to.</td></tr>
+          <tr><td><code>cfe</code></td><td><code>cargo fetch</code></td><td>Fetch dependencies without building.</td></tr>
+          <tr><td><code>cpa</code></td><td><code>cargo package</code></td><td>Assemble a publishable <code>.crate</code> tarball.</td></tr>
+          <tr><td><code>cpl</code></td><td><code>cargo publish</code></td><td>Publish to crates.io.</td></tr>
+          <tr><td><code>ccl</code></td><td><code>cargo clean</code></td><td>Remove the <code>target/</code> directory.</td></tr>
+        </tbody>
+      </table>
+
+      <hr class="section-rule">
+
+      <h2 class="tutorial-title"><span class="step-hash">&gt;</span>REMOTE COMPLETER WALKTHROUGH</h2>
+      <p class="tutorial-subtitle"><code>__cargo_remote_packages</code> is the one function that touches the network. It is invoked from the <code>add</code> arm (positional) and the <code>install</code> arm (<code>*: :__cargo_remote_packages</code>). Step by step, top to bottom of the function body:</p>
+
+      <table class="file-table">
+        <thead>
+          <tr><th>Step</th><th>Code</th><th>Effect</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1. Flag guard</td><td><code>[[ "$PREFIX" == -* ]] &amp;&amp; return 1</code></td><td>If the word under cursor starts with <code>-</code> (a flag, not a crate name), bail before any network call.</td></tr>
+          <tr><td>2. Key derivation</td><td><code>crate_cache_file="crate_${PREFIX}_cache"</code><br><code>crate_ary="__crate_${PREFIX}"</code></td><td>Per-prefix on-disk cache key and per-prefix session parameter name.</td></tr>
+          <tr><td>3. Parameter probe</td><td><code>ret=$(eval "printf \$+$crate_ary" ...)</code></td><td>Probe whether the session parameter <code>__crate_${PREFIX}</code> already exists (<code>$+</code> = set-test). If set, reuse it (tier 1).</td></tr>
+          <tr><td>4. On-disk cache</td><td><code>if ! _retrieve_cache $crate_cache_file</code></td><td>On a session miss, try the standard zsh on-disk completion cache (tier 2).</td></tr>
+          <tr><td>5. Live query</td><td><code>cargo search --color=never --limit 1000 -q $PREFIX</code></td><td>On a cache miss, query crates.io. Up to 1000 results, no color codes, quiet.</td></tr>
+          <tr><td>6. Parse loop</td><td><code>while read crate desc; do ... esac</code></td><td>Read <code>crate desc</code> pairs; <code>case</code> drops the trailing <code>...</code> "and N more" line. Each kept line becomes a quoted <code>crate:desc</code> pair via <code>${(q)...}</code>.</td></tr>
+          <tr><td>7. Store</td><td><code>_store_cache $crate_cache_file tmp_ary</code></td><td>Populate both the session parameter and the on-disk cache for next time.</td></tr>
+          <tr><td>8. Offer</td><td><code>_describe -t remote-crate 'remote crate' tmp_ary</code></td><td>Feed the <code>crate:description</code> pairs to compsys so each candidate shows its crates.io blurb.</td></tr>
+        </tbody>
+      </table>
+
+      <hr class="section-rule">
+
+      <h2 class="tutorial-title"><span class="step-hash">%</span>HELPER FUNCTION REFERENCE</h2>
+      <p class="tutorial-subtitle">8 namespaced <code>_cargo_*</code> helpers backing the per-subcommand arms. All are public-callable &mdash; sibling plugins and user completions can reuse them.</p>
+
+      <table class="file-table">
+        <thead>
+          <tr><th>Function</th><th>Source</th><th>Backs</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>_cargo_cmds</code></td><td>Parses <code>cargo --list</code> (drop header, de-indent 4 spaces, split name/desc on whitespace) via parameter-expansion flags.</td><td>Top-level subcommand completion (positional 1).</td></tr>
+          <tr><td><code>_cargo_unstable_flags</code></td><td>Parses <code>cargo -Z help</code>, keeping <code>--*</code> lines.</td><td>The <code>-Z</code> nightly-flag completer in <code>common</code>.</td></tr>
+          <tr><td><code>_cargo_installed_crates</code></td><td><code>compadd</code> over the first column of <code>cargo install --list</code>.</td><td><code>cargo uninstall</code> crate argument.</td></tr>
+          <tr><td><code>_cargo_package_names</code></td><td><code>_message -e packages package</code> &mdash; currently a message stub (marked <code>#FIXME: Disabled until fixed</code> in source).</td><td>Every <code>-p/--package</code> flag across build/check/clean/doc/run/rustc/rustdoc/test/etc.</td></tr>
+          <tr><td><code>_cargo_names_from_array</code></td><td>Reads <code>cargo locate-project</code> manifest path, scans <code>[[block]]</code> sections, extracts <code>name = "..."</code> via <code>regexp-replace</code>.</td><td>Shared backend for test/bench name completion.</td></tr>
+          <tr><td><code>_cargo_example_names</code></td><td>Lists <code>examples/*.rs</code>, strips path + <code>.rs</code> via <code>:t:r</code>.</td><td><code>--example</code> flags on build/install/run/test/etc.</td></tr>
+          <tr><td><code>_cargo_test_names</code></td><td>Delegates to <code>_cargo_names_from_array "test"</code>.</td><td><code>cargo test</code> name + <code>--test</code> flag.</td></tr>
+          <tr><td><code>_cargo_benchmark_names</code></td><td>Delegates to <code>_cargo_names_from_array "bench"</code>.</td><td><code>--bench</code> flag in the shared <code>command_scope_spec</code>.</td></tr>
+        </tbody>
+      </table>
+
+      <hr class="section-rule">
+
+      <h2 class="tutorial-title"><span class="step-hash">~</span>SHARED FLAG GROUPS</h2>
+      <p class="tutorial-subtitle"><code>_cargo</code> defines reusable <code>_arguments</code> spec arrays at the top of the function, then splices the relevant ones into each subcommand arm &mdash; so the same flag never drifts between subcommands.</p>
+
+      <div class="feature-grid">
+        <div class="feature-card">
+          <h4><code>common</code></h4>
+          <p>Carried by every arm: <code>-v/--verbose</code>, <code>-q/--quiet</code> (mutually exclusive), <code>-Z</code> (unstable flags), <code>--frozen</code>, <code>--locked</code>, <code>--color=</code> (auto/always/never), <code>-h/--help</code>.</p>
+        </div>
+        <div class="feature-card">
+          <h4><code>command_scope_spec</code></h4>
+          <p>Mutually-exclusive target selectors: <code>--bench</code>, <code>--example</code>, <code>--bin</code>, <code>--lib</code>, <code>--test</code>. Spliced into bench/build/check/fix/rustc/rustdoc.</p>
+        </div>
+        <div class="feature-card">
+          <h4><code>parallel</code> / <code>features</code></h4>
+          <p><code>parallel</code> = <code>-j/--jobs</code>. <code>features</code> = <code>--features=</code>, <code>--all-features</code> (exclusive), <code>--no-default-features</code>.</p>
+        </div>
+        <div class="feature-card">
+          <h4><code>msgfmt</code> / <code>triple</code> / <code>target</code> / <code>manifest</code> / <code>registry</code></h4>
+          <p><code>--message-format=</code> (human/json/short), <code>--target=</code> triple, <code>--target-dir=</code>, <code>--manifest-path=</code>, <code>--registry=</code>. Each subcommand splices only the groups it accepts.</p>
+        </div>
+        <div class="feature-card">
+          <h4>Top-level toolchain overrides</h4>
+          <p>The dispatcher <code>_arguments</code> also completes <code>+stable</code> / <code>+beta</code> / <code>+nightly</code> (mutually exclusive), <code>--list</code>, <code>--explain=</code>, and <code>-V/--version</code> before the subcommand positional.</p>
+        </div>
+        <div class="feature-card">
+          <h4>Plugin fallthrough</h4>
+          <p>The wildcard <code>*)</code> arm calls <code>_call_function ret _cargo-${words[1]}</code> &mdash; any installed <code>cargo-&lt;sub&gt;</code> can ship its own <code>_cargo-&lt;sub&gt;</code> completer and have it picked up. Otherwise it falls back to <code>_default</code>.</p>
+        </div>
+      </div>
+
     </main>
 
     <footer style="text-align:center;padding:2rem;font-size:10px;color:var(--text-muted);font-family:'Orbitron',sans-serif;letter-spacing:2px;">
-      ZSH-CARGO-COMPLETION ENGINEERING REPORT &middot; 473 ZSH LINES &middot; 450 _cargo LINES &middot; 172 ZUNIT TESTS &middot; 33 SUBCOMMAND ARMS &middot; 17 ALIASES &middot; LIVE CRATES.IO COMPLETION &middot; MENKETECHNOLOGIES
+      ZSH-CARGO-COMPLETION ENGINEERING REPORT &middot; 473 ZSH LINES &middot; 450 _cargo LINES &middot; 172 ZUNIT TESTS &middot; 32 SUBCOMMAND ARMS &middot; 17 ALIASES &middot; LIVE CRATES.IO COMPLETION &middot; MENKETECHNOLOGIES
     </footer>
   </div>
 
