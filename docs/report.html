@@ -56,7 +56,7 @@
             <a href="https://github.com/MenkeTechnologies/MenkeTechnologiesMeta" target="_blank" rel="noopener noreferrer">Meta</a>
           </nav>
           <p style="margin:0.35rem 0 0;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text-dim);letter-spacing:0.03em;opacity:0.75;">
-            <code>#compdef cargo</code> &middot; live <code>cargo search</code>-backed remote crate completion &middot; <code>_retrieve_cache</code> / <code>_store_cache</code> 2-tier memoization &middot; full OMZ cargo subcommand surface
+            <code>#compdef cargo</code> &middot; live <code>cargo search</code>-backed remote crate completion &middot; <code>_retrieve_cache</code> / <code>_store_cache</code> + session-parameter caching of remote results &middot; full OMZ cargo subcommand surface
           </p>
         </div>
         <div class="tutorial-toolbar">
@@ -126,12 +126,12 @@
           <tr>
             <td><code>t-aliases.zsh</code></td>
             <td class="num">21</td>
-            <td>Each of the 17 aliases resolves to the documented cargo invocation; <code>fpath</code> augmentation uses <code>${0:h}/src</code> (plugin-manager portable); <code>_cargo</code> leads with <code>#compdef cargo</code>.</td>
+            <td>Alias expansions for <code>co</code>, <code>cb</code>, <code>cbr</code>, <code>cr</code>, <code>ct</code>, <code>ccy</code>, <code>ccl</code>, <code>cfm</code>, <code>cfi</code>, <code>cad</code>, <code>ciu</code>, <code>cfa</code>, <code>cpa</code>, <code>cpl</code>; <code>fpath</code> augmentation uses <code>${0:h}/src</code> (plugin-manager portable); <code>_cargo</code> leads with <code>#compdef cargo</code>.</td>
           </tr>
           <tr>
             <td><code>t-syntax.zsh</code></td>
             <td class="num">133</td>
-            <td>Every <code>*.zsh</code> in the repo root and every file under <code>src/</code> parses cleanly under <code>zsh -n</code>. Largest test file by count &mdash; covers parse safety per-file, not just per-repo.</td>
+            <td>Every <code>*.zsh</code> in the repo root and every file under <code>src/</code> parses cleanly under <code>zsh -n</code>, plus alias-definition checks and structural greps of <code>src/_cargo</code> (subcommand arms, helper functions, flag specs).</td>
           </tr>
           <tr>
             <td><code>t-contract.zsh</code></td>
@@ -141,17 +141,17 @@
           <tr>
             <td><code>t-contract2.zsh</code></td>
             <td class="num">5</td>
-            <td>OMZ-style install pins: <code>plugins+=(zsh-cargo-completion)</code> path works; <code>fpath</code> is prepended, not replaced.</td>
+            <td><code>_cargo</code> ends with a bare <code>_cargo</code> invocation; no alias shadows a zsh builtin or reserved word; helper functions use the <code>_cargo</code> / <code>__cargo</code> prefix; plugin does not modify <code>PATH</code>.</td>
           </tr>
           <tr>
             <td><code>t-contract3.zsh</code></td>
             <td class="num">5</td>
-            <td>Zinit-style install pins: <code>zinit load</code> path resolves; no compile-on-load hooks; <code>nocompile</code> ice honored.</td>
+            <td><code>case</code>/<code>esac</code> balance in <code>_cargo</code>; dispatch on <code>$state</code>; <code>_retrieve_cache</code> paired with <code>_store_cache</code>; <code>cfa</code> chain; <code>co</code> is bare <code>cargo</code>.</td>
           </tr>
           <tr>
             <td><code>t-contract4.zsh</code></td>
             <td class="num">5</td>
-            <td>Manual <code>source</code> path: standalone source from any CWD honors <code>${0:h}</code> resolution; no global state leak before sourcing.</td>
+            <td><code>+stable</code> / <code>+beta</code> / <code>+nightly</code> are mutually exclusive; <code>--frozen</code> / <code>--locked</code> in <code>common</code>; <code>-Z</code> routes to <code>_cargo_unstable_flags</code>, defined once; toolchain selector descriptions.</td>
           </tr>
           <tr class="total-row">
             <td>Total</td>
@@ -168,11 +168,11 @@
       <div class="feature-grid">
         <div class="feature-card">
           <h4>Zinit (recommended)</h4>
-          <p><code>zinit ice lucid nocompile</code><br><code>zinit load MenkeTechnologies/zsh-cargo-completion</code><br><code>nocompile</code> keeps the source path stable so <code>${0:h}/src</code> resolves to the real on-disk <code>src/</code> directory (not the compiled <code>.zwc</code>).</p>
+          <p><code>zinit ice lucid nocompile</code><br><code>zinit load MenkeTechnologies/zsh-cargo-completion</code></p>
         </div>
         <div class="feature-card">
           <h4>Oh My Zsh</h4>
-          <p>Clone into <code>$ZSH_CUSTOM/plugins/zsh-cargo-completion</code>, then add to <code>plugins=(...)</code>. OMZ sources <code>zsh-cargo-completion.plugin.zsh</code>, the file declares its aliases, augments <code>fpath</code>, and OMZ's own <code>compinit</code> picks up <code>_cargo</code> on the next prompt.</p>
+          <p>Clone into <code>$ZSH_CUSTOM/plugins/zsh-cargo-completion</code>, then add to <code>plugins=(...)</code>. OMZ sources <code>zsh-cargo-completion.plugin.zsh</code>, the file declares its aliases, augments <code>fpath</code>, and OMZ's own <code>compinit</code> picks up <code>_cargo</code>.</p>
         </div>
         <div class="feature-card">
           <h4>Cache layer (zsh built-in)</h4>
@@ -184,11 +184,11 @@
         </div>
         <div class="feature-card">
           <h4>No daemon, no fork hot path</h4>
-          <p>The <em>only</em> external process invocation is <code>cargo search</code> &mdash; gated behind a prefix length check (skipped if <code>$PREFIX</code> starts with <code>-</code>) and gated again behind the cache. Every other completion path (subcommand list via <code>cargo --list</code>, installed crates via <code>cargo install --list</code>, local package names) is also cached.</p>
+          <p>The only network-touching process is <code>cargo search</code> &mdash; skipped if <code>$PREFIX</code> starts with <code>-</code> and gated again behind the cache. Other completion paths run local commands at completion time without caching: <code>cargo --list</code> (subcommands), <code>cargo install --list</code> (installed crates), <code>cargo -Z help</code> (unstable flags), <code>cargo locate-project</code> (test/bench names), and <code>ls examples/*.rs</code> (example names).</p>
         </div>
         <div class="feature-card">
           <h4>Public-callable helpers</h4>
-          <p>The 8 helper fns are namespaced (<code>_cargo_*</code>) &mdash; user-defined completions and sibling plugins can reuse them. <code>_cargo_installed_crates</code> in particular is the answer to "complete the binary name for <code>cargo uninstall</code> / <code>cargo install --force</code>" &mdash; no zsh-cargo-completion-specific knowledge required to call it.</p>
+          <p>The 8 helper fns are namespaced (<code>_cargo_*</code>) &mdash; user-defined completions and sibling plugins can reuse them. <code>_cargo_installed_crates</code> in particular completes the crate name argument of <code>cargo uninstall</code> from <code>cargo install --list</code>.</p>
         </div>
       </div>
 
@@ -207,7 +207,7 @@
         </div>
         <div class="feature-card">
           <h4>Skip remote lookup on flag prefix</h4>
-          <p><code>[[ "$PREFIX" == -* ]] &amp;&amp; return 1</code> at the top of <code>__cargo_remote_packages</code> &mdash; when the user is in the middle of typing a flag (e.g. <code>cargo add --quiet</code>), the completer doesn't fire <code>cargo search</code>. Two seconds saved per accidental <kbd>TAB</kbd> on flags.</p>
+          <p><code>[[ "$PREFIX" == -* ]] &amp;&amp; return 1</code> at the top of <code>__cargo_remote_packages</code> &mdash; when the user is in the middle of typing a flag (e.g. <code>cargo add --quiet</code>), the completer doesn't fire <code>cargo search</code>.</p>
         </div>
         <div class="feature-card">
           <h4>Subcommand list via <code>cargo --list</code>, not a hardcoded table</h4>
@@ -231,7 +231,7 @@
         <li><strong>Memory</strong>: zero permanent allocations &mdash; the per-prefix <code>__crate_${PREFIX}</code> caches live for the shell session and clear on exit.</li>
         <li><strong>Compinit cost</strong>: one extra <code>fpath</code> entry, one extra <code>_cargo</code> file &mdash; folded into the existing <code>compinit</code> pass, no new compile step.</li>
         <li><strong>Network</strong>: <em>one</em> <code>cargo search</code> per uncached prefix on <code>cargo add</code> / <code>cargo install</code> &mdash; bounded to crates.io; opt out by typing without <kbd>TAB</kbd>.</li>
-        <li><strong>External commands</strong>: <code>cargo</code> only (for <code>--list</code>, <code>search</code>, <code>install --list</code>). No <code>curl</code>, no <code>jq</code>, no <code>git</code>.</li>
+        <li><strong>External commands</strong>: <code>cargo</code> (<code>--list</code>, <code>search</code>, <code>install --list</code>, <code>-Z help</code>, <code>locate-project</code>) and <code>ls</code> for <code>examples/</code>. No <code>curl</code>, no <code>jq</code>, no <code>git</code>.</li>
       </ul>
 
       <hr class="section-rule">
